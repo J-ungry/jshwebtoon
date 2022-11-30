@@ -1,0 +1,13 @@
+#db 관련
+
+FOLDER
+thumbs : 썸네일 저장된 folder
+
+.IPYNB
+survey_db.ipynb : 테이블 survey 생성 / 설문 조사 결과 insert
+survey_user_db.ipynb : 테이블 survey 내용 삽입 / 설문 성별, 나이 정보 insert
+thumb_db.ipynb : 테이블 thumb 내용 삽입 / 썸네일 blob 형태로 삽입하기 
+webtoon_info_db.ipynb : 테이블 webtoon_info 생성 /크롤링 정보 삽입
+
+.DOCX
+create_db.docx : 데이터베이스 생성 쿼리 
