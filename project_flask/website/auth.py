@@ -1,6 +1,7 @@
 from flask import Blueprint,render_template,request,flash,redirect,url_for,session
 from werkzeug.security import generate_password_hash,check_password_hash
 from website import init    #init 파일 import -> init 파일에 있는 함수,변수 사용 가능
+import models
 
 #auth.py에서는 주로 로그인에 관련된 코드 작성
 
