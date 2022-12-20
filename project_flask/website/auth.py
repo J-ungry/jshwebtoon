@@ -17,7 +17,7 @@ def user_login():
         password=request.form.get("password")
         #쿼리문 안에 변수 쓸 때 포매팅으로 f 쓰는데 '{변수}' 처럼 따옴표 꼭 붙여야 함
         cursor.execute(f"""
-            SELECT * FROM user WHERE id='{id}'             
+            SELECT * FROM user WHERE id='{id}'
         """)
         login_user_check=cursor.fetchone()
         login_user_id=login_user_check[0]
@@ -38,7 +38,7 @@ def user_login():
             user_age=login_user_check[3]
             user_gender=login_user_check[4]
             
-            #session 등록하기 위해서는 필수. 생략 안됨.
+            #session 등록하기 위해서는 필수. 생략 안됨
             from main import app
             app.secret_key="kth"
             
@@ -169,10 +169,10 @@ def upate_information():
 def delete_user():
     if request.method=="POST":
         if session:
-            # id=session["user_id"]
-            # cursor.execute(f"""
-            #     SELECT * FROM user WHERE id='{id}'       
-            # """)
+            #id=session["user_id"]
+            #cursor.execute(f"""
+            #    SELECT * FROM user WHERE id='{id}'       
+            #""")
             pass
         else:
             pass
