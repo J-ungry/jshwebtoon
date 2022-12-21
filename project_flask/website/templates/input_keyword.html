@@ -36,11 +36,9 @@
             <h5 class="p-1" style="font-size: 15px; font-weight: lighter; border-bottom: 1.5px solid #cddde6;">장르</h5>
             <div style="height: 100px; overflow: auto;">
                 <ul style="font-weight: bolder; color: #23466e;" class="p-2">
-                    <li class="p-1">판타지</li>
-                    <li class="p-1">액션</li>
-                    <li class="p-1">로맨스</li>
-                    <li class="p-1">학원물</li>
-                    <li class="p-1">학원물</li>
+                    {% for gen in genre %}
+                        <li class="p-1">{{gen}}</li>
+                    {% endfor %}
                 </ul>
             </div>
         </div>

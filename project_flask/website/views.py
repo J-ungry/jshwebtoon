@@ -1,5 +1,8 @@
 from flask import Blueprint,render_template,session
+from website import init
 
+db=init.connect_db()
+cursor=db.cursor()
 views = Blueprint("views",__name__)
 
 @views.route("/")
@@ -16,6 +19,35 @@ def introduce_team():
 
 @views.route("/input_keyword")
 def input_keyword():
-    return render_template("input_keyword.html")
-    
+    if session:
+        return_genre=[]
+        #장르 = 1 소재 = 2 분위기 = 3 수상작 = 4 등장인물관계 = 5 원작웹툰 =6 
+        for type in range(1,7):
+            cursor.execute(f"""
+                SELECT DISTINCT keyword FROM keyword WHERE type='{type}' ORDER BY keyword
+            """)
+            if type==1:
+                genre=cursor.fetchall()
+            elif type==2:
+                sojae=cursor.fetchall()
+            elif type==3:
+                atm=cursor.fetchall()
+            elif type==4:
+                soosang=cursor.fetchall()
+            elif type==5:
+                rel=cursor.fetchall()
+            else:
+                origin_webtoon=cursor.fetchall()
+        print(f"genre : {len(genre)}")
+        print(f"sojae : {len(sojae)}")
+        print(f"atm : {len(atm)}")        
+        print(f"soosang : {len(soosang)}")
+        print(f"rel : {len(rel)}")
+        print(f"origin_webtoon : {len(origin_webtoon)}")
+        for i in range(len(genre)):
+            return_genre.append(genre[i][0])
+        
+        print(return_genre)
+        
+        return render_template("input_keyword.html",genre=return_genre)
     
