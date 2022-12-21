@@ -6,31 +6,57 @@ from website import init
 
 
 
+def make_list(datas):
+    lst = []
+    for i in datas:
+        lst.append(i[0])
+    return lst
 
-#데이터 호출함수=> 추후 DB 에서 호출하게끔 개선하기
+#데이터 호출함수=> 추후 DB 에서 호출하게끔 개선하기 (완료)
 def get_data():
     db = init.connect_db()
+    cursor = db.cursor()
+
+    #webtoon_info to dataframe
+    query ="select column_name from information_schema.columns where table_name='webtoon_info'"
+    cursor.execute(query)
+    datas = cursor.fetchall()
+    column = make_list(datas)
     
-    #rating_data -> /Users/jungry/Desktop/bigdata/jshwebtoon/data/csv/after_pre/total_survey_221129_2.csv
-    rating_data = pd.read_csv('/Users/jungry/Desktop/bigdata/jshwebtoon/data/csv/after_pre/total_survey_221129_2.csv')
-    webtoon_data= pd.read_csv('/Users/jungry/Desktop/bigdata/jshwebtoon/data/csv/after_pre/webtoon_preprocessing_221219.csv')
+    query = "select * from webtoon_info"
+    cursor.execute(query)
+    datas = cursor.fetchall()
+    webtoon_data = pd.DataFrame(datas,columns=column)
+    
+    #survey to dataframe 
+    query = "select column_name from information_schema.columns where table_name='survey'"
+    cursor.execute(query)
+    datas = cursor.fetchall()
+    column = make_list(datas)
+
+    query = "select * from survey"
+    cursor.execute(query)
+    datas = cursor.fetchall()
+    rating_data = pd.DataFrame(datas,columns=column)
     
     return rating_data,webtoon_data
 
 # -정구리- 협업필터링
 #데이터 전처리
 def preprocessing_data(rating_data,webtoon_data):
-    #webtoon_title -> title (for merge)
-    rating_data = rating_data.rename(columns={'webtoon_title':'title'})
+    #webtoon_no -> no (for merge)
+    rating_data = rating_data.rename(columns={'webtoon_no':'no'})
+    
     #필요없는 데이터들 drop
     webtoon_data.drop(['likes','fake_intro','real_intro','first_register_date','last_register_date','author','status','episodes','age','rate'],axis=1,inplace=True)
 
-    #merge, drop
-    usr_webtoon_data = pd.merge(rating_data,webtoon_data,on="title")
-    usr_webtoon_data = usr_webtoon_data.drop(['webtoon_num','genre1_pre','genre2_pre'],axis=1)
+    #merge, drop (no 기준으로 merge)
+    usr_webtoon_data = pd.merge(rating_data,webtoon_data,on="no")
+    #drop unnecessary columns
+    usr_webtoon_data = usr_webtoon_data.drop(['no','link','genre1_pre','genre2_pre'],axis=1)
 
     #make pivot
-    usr_webtoon_pivot = usr_webtoon_data.pivot_table('webtoon_ratings',index="user",columns='title')
+    usr_webtoon_pivot = usr_webtoon_data.pivot_table('score',index="user",columns='title')
 
     #NaN -> 0.0 SVD 동작을 위해선 Nan 형태가 있으면 안된덩 ㅋㅋ
     usr_webtoon_pivot = usr_webtoon_pivot.fillna(0)
@@ -54,22 +80,25 @@ def truncateSVD(rating_data,webtoon_data):
     return corr,webtoon_title
 
 def recommand_webtoon(title):
-    rating_data,webtoon_data = get_data()
-    corr,webtoon_title = truncateSVD(rating_data,webtoon_data)
-    webtoon_title_list = list(webtoon_title)
-    target = webtoon_title_list.index(title)
+    result = [] #최종 결과 들어갈 list
+    rating_data,webtoon_data = get_data() #데이터 호출하기 
+    corr,webtoon_title = truncateSVD(rating_data,webtoon_data) #model 에 돌리기 
+    webtoon_title_list = list(webtoon_title) #웹툰 제목 호출하기
+    target = webtoon_title_list.index(title) #입력받은 웹툰의 index
     corr_target = corr[target]
-    result = list(webtoon_title[(corr_target>=0.80)])[:200]
-
-    return result
+    
+    #딕셔너리로 바꾼 뒤에 상위 5개만 출력 + 자기 자신 제외하기
+    dic_corr = dict(enumerate(corr_target))
+    dic_corr = list(dict(sorted(dic_corr.items(),key=lambda item:item[1],reverse=1)).keys())[:6] #6인 이유는 자기자신 제외를 위해
+    for i in dic_corr:
+        result.append(webtoon_title[i])
+    return result[1:]
     
 
 
 
 def main():
-    
-    result = recommand_webtoon('가비지타임')
-
+    result = recommand_webtoon('마루는 강쥐')
 
 if __name__ =='__main__':
     main()
