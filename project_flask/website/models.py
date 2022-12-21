@@ -6,7 +6,7 @@ from sklearn.decomposition import TruncatedSVD
 
 from numpy import dot
 from numpy.linalg import norm
-import init
+from website import init
 
 
 
