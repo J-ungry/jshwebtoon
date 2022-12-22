@@ -1,4 +1,0 @@
-#소스코드 설명
-
-webtoon_dataset_v03.ipynb : 'https://comic.naver.com/webtoon/creation' 해당 링크 크롤링 소스코드 
-webtoon_preprocessing.ipynb : 크롤링 결과 전처리 소스코드
