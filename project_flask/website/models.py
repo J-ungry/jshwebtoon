@@ -2,12 +2,10 @@ from matplotlib.pyplot import get
 import numpy as np 
 import pandas as pd
 from sklearn.decomposition import TruncatedSVD
-#from website import init
+from website import db
 
 from numpy import dot
 from numpy.linalg import norm
-import init
-
 
 
 def make_list(datas):
@@ -18,29 +16,19 @@ def make_list(datas):
 
 #데이터 호출함수=> 추후 DB 에서 호출하게끔 개선하기 (완료)
 def get_data():
-    db = init.connect_db()
-    cursor = db.cursor()
 
     #webtoon_info to dataframe
-    query ="select column_name from information_schema.columns where table_name='webtoon_info'"
-    cursor.execute(query)
-    datas = cursor.fetchall()
+    datas = db.jungry_query("select column_name from information_schema.columns where table_name='webtoon_info'")
     column = make_list(datas)
     
-    query = "select * from webtoon_info"
-    cursor.execute(query)
-    datas = cursor.fetchall()
+    datas = db.jungry_query("select * from webtoon_info")
     webtoon_data = pd.DataFrame(datas,columns=column)
     
     #survey to dataframe 
-    query = "select column_name from information_schema.columns where table_name='survey'"
-    cursor.execute(query)
-    datas = cursor.fetchall()
+    datas = db.jungry_query("select column_name from information_schema.columns where table_name='survey'")
     column = make_list(datas)
 
-    query = "select * from survey"
-    cursor.execute(query)
-    datas = cursor.fetchall()
+    datas = db.jungry_query("select * from survey")
     rating_data = pd.DataFrame(datas,columns=column)
     
     return rating_data,webtoon_data
@@ -97,10 +85,6 @@ def recommand_webtoon(title):
     for i in dic_corr:
         result.append(webtoon_title[i])
     return result[1:]
-    
-
-
-
 
 #재현이소스
 
@@ -110,14 +94,10 @@ def cos_sim(A, B):
 
 def dsModel(webtoon_no):
 
-    db=init.connect_db()
-    cursor=db.cursor()
+    cursor=db.create_cursor()
 
     #이미지 특징 vector select
-    sql = 'select resnet from thumb'
-    cursor.execute(sql)
-    tup = cursor.fetchall()
-    db.close()
+    tup = db.jungry_query("select resnet from thumb")
 
     vec = []
     for y in range(len(tup)):
@@ -135,11 +115,9 @@ def dsModel(webtoon_no):
 
 def main():
     result = recommand_webtoon('마루는 강쥐')
-    print(result)
-    print(dsModel(1))
+    #print(result)
+    # print(dsModel(1))
+    return result
 
-if __name__ =='__main__':
-    main()
-
-
-
+# if __name__ =='__main__':
+#     main()

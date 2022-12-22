@@ -1,13 +1,14 @@
 from flask import Blueprint,render_template,session
-from website import init
+from website import db,models
 
-db=init.connect_db()
-cursor=db.cursor()
+cursor=db.create_cursor()
 views = Blueprint("views",__name__)
 
 @views.route("/")
 def index():
-    return render_template("index.html")
+    a=models.main()
+    print(a)
+    return render_template("index.html",a=a)
 
 @views.route("/introduce_service")
 def introduce_service():
@@ -38,16 +39,13 @@ def input_keyword():
                 rel=cursor.fetchall()
             else:
                 origin_webtoon=cursor.fetchall()
-        print(f"genre : {len(genre)}")
-        print(f"sojae : {len(sojae)}")
-        print(f"atm : {len(atm)}")        
-        print(f"soosang : {len(soosang)}")
-        print(f"rel : {len(rel)}")
-        print(f"origin_webtoon : {len(origin_webtoon)}")
+        
         for i in range(len(genre)):
             return_genre.append(genre[i][0])
         
-        print(return_genre)
+        result,dsModel=models.main()
+        print(result)
+        print(dsModel)
         
         return render_template("input_keyword.html",genre=return_genre)
     
