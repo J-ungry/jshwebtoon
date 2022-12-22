@@ -1,13 +1,26 @@
 from flask import Blueprint,render_template,request,flash,redirect,url_for,session
 from werkzeug.security import generate_password_hash,check_password_hash
-from website import init    #init 파일 import -> init 파일에 있는 함수,변수 사용 가능
+from website import db
+import pymysql
 import website.models as models
 
-#auth.py에서는 주로 로그인에 관련된 코드 작성
+DB_USER="jsh"   #MySQL 계정명
+#DB_USER = "root" #정구리 MySQL 계정명
+DB_NAME="jsh"   #MySQL DB명
 
-db=init.connect_db()    #init 파일에 있는 MySQL 연결 함수 호출
-cursor=db.cursor()
+#auth.py에서는 주로 로그인에 관련된 코드 작성
 auth = Blueprint("auth",__name__)
+
+webtoon_db = pymysql.connect(   
+        host="localhost",
+        port=3306,
+        user=DB_USER,
+        passwd="bread!123",
+        #passwd="duffufK123!",
+        db=DB_NAME,
+        charset="utf8"
+        )
+print("connect MySQL")
 
 @auth.route("/user_login",methods=["GET","POST"])
 def user_login():
@@ -17,10 +30,11 @@ def user_login():
         id=request.form.get("id")   #name 속성 값이 id인 input 가져옴(사용자가 입력한 값 가져옴)
         password=request.form.get("password")
         #쿼리문 안에 변수 쓸 때 포매팅으로 f 쓰는데 '{변수}' 처럼 따옴표 꼭 붙여야 함
-        cursor.execute(f"""
-            SELECT * FROM user WHERE id='{id}'
-        """)
-        login_user_check=cursor.fetchone()
+        select_user=db.query(webtoon_db,f"SELECT * FROM user WHERE id='{id}'")
+        print(select_user)
+        login_user_check=select_user[0]
+        print(login_user_check)
+        
         login_user_id=login_user_check[0]
         login_user_password=login_user_check[1]
         
@@ -66,38 +80,33 @@ def sign_up():
         gender=request.form.get("gender")
         age=request.form.get("age")
         
-        cursor.execute(f"""
-            SELECT id FROM user WHERE id='{id}'
-        """)
-        check_id=cursor.fetchone()
-    
-        if len(id)<5:
-            flash("아이디는 5자 이상입니다.",category="error")
-        elif check_id:
+        check_id=db.query(webtoon_db,f"SELECT id FROM user WHERE id='{id}'")
+        print(check_id)
+        
+        if check_id:
             flash("이미 존재하는 아이디입니다.",category="error")
-        elif len(name)<2:
-            flash("이름은 3글자 이상입니다.",category="error")
-        elif password != repassword:
-            flash("비밀번호와 비밀번호재입력이 다릅니다.",category="error")
-        elif len(password)<7:
-            flash("비밀번호가 너무 짧습니다.",category="error")
-        elif gender=="else":
-            flash("성별을 선택해주세요.",category="error")
-        elif age=="else":
-            flash("연령대를 선택해주세요.",category="error")
         else:
-            insert_user_data=f"""
-                INSERT INTO
-                user
-                VALUES
-                ('{id}','{password}','{name}','{age}','{gender}')
-            """
-            cursor.execute(insert_user_data)
-            db.commit()     #db.commit()해야 db에 반영
-            
-            flash("회원가입 완료.",category="success")
-
-            return redirect(url_for("views.index"))
+            if len(id)<5:
+                flash("아이디는 5자 이상입니다.",category="error")
+            elif len(name)<2:
+                flash("이름은 3글자 이상입니다.",category="error")
+            elif password != repassword:
+                flash("비밀번호와 비밀번호재입력이 다릅니다.",category="error")
+            elif len(password)<7:
+                flash("비밀번호가 너무 짧습니다.",category="error")
+            elif gender=="else":
+                flash("성별을 선택해주세요.",category="error")
+            elif age=="else":
+                flash("연령대를 선택해주세요.",category="error")
+            else:
+                insert_user_data=f"INSERT INTO user VALUES ('{id}','{password}','{name}','{age}','{gender}')"
+                check=db.query(webtoon_db,insert_user_data)
+                print(check)
+                print(type(check))
+               
+                webtoon_db.commit()
+                flash("회원가입 완료.",category="success")
+                return redirect(url_for("views.index"))
         
     return render_template("sign_up.html")
 
@@ -114,7 +123,6 @@ def logout():
 @auth.route("/user_detail",methods=["GET"])
 def user_detail():
     if request.method=="GET":
-        print(session)
         if session:
             return render_template("user_detail.html")
         else:
@@ -129,30 +137,32 @@ def upate_information():
     elif request.method=="POST":
         id=session["user_id"]
         
-        cursor.execute(f"""
-            SELECT password FROM user WHERE id='{id}'
-        """)
-        check_password=cursor.fetchone()[0]
-        if check_password!=request.form.get("password"):
-            flash("비밀번호가 틀립니다.",category="error")
-        elif request.form.get=="":
+        data=db.query(webtoon_db,f"SELECT password FROM user WHERE id='{id}'")
+        print(data)
+        check_password=data[0][0]
+        print(check_password)
+        print(request.form.get("password"))
+        print(type(request.form.get("password")))
+    
+        if not request.form.get("password"):
             flash("비밀번호를 입력해주세요.",category="error")
+            return render_template("user_detail.html")
         else:
-            #update information
-            update_name=request.form.get("name")
-            update_gender=request.form.get("gender")
-            update_age=request.form.get("age")
-            check_update=cursor.execute(f"""
-                UPDATE user SET
-                name='{update_name}',gender='{update_gender}',age='{update_age}'
-                WHERE id='{id}'  
-            """)
-            
-            if update_name==session["user_name"] and update_age==session["user_age"] and update_gender==session["user_gender"]:
-                flash("수정 할 내용이 없습니다.",category="error")
-            elif check_update<1:
-                flash("수정 실패",category="error")
+            if check_password!=request.form.get("password"):
+                flash("비밀번호가 틀립니다.",category="error")
+                return render_template("user_detail.html")
             else:
+                #update information
+                update_name=request.form.get("name")
+                update_gender=request.form.get("gender")
+                update_age=request.form.get("age")
+                
+                if update_name==session["user_name"] and update_age==session["user_age"] and update_gender==session["user_gender"]:
+                    flash("수정 할 내용이 없습니다.",category="error")
+                    return render_template("user_detail.html")
+                    
+                db.query(webtoon_db,f"UPDATE user SET name='{update_name}', gender='{update_gender}', age='{update_age}' WHERE id='{id}'")
+
                 #새로운 session 등록
                 session.pop("user_name",None)
                 session["user_name"]=update_name
@@ -160,22 +170,41 @@ def upate_information():
                 session["user_gender"]=update_gender
                 session.pop("user_age",None)
                 session["user_age"]=update_age
+                webtoon_db.commit()
                 flash("수정 완료되었습니다.",category="success")
-                db.commit()
-        
-        return render_template("user_detail.html")
+                return render_template("user_detail.html")
 
 #회원 탈퇴
 @auth.route("/delete_user",methods=["POST"])
 def delete_user():
     if request.method=="POST":
         if session:
-            #id=session["user_id"]
-            #cursor.execute(f"""
-            #    SELECT * FROM user WHERE id='{id}'       
-            #""")
-            pass
+            id=session["user_id"]
+            data=db.query(webtoon_db,f"SELECT * FROM user WHERE id='{id}'")
+            delete_user_data=data[0]    #('rlawogusWkd', 'QHFMADLWLQSOrJ', '김재현', '20대', 'male')
+            print(delete_user_data)
+            print(request.form.get("password"))
+            
+            #flash 안뜸 12/22
+            if not request.form.get("password"):
+                flash("비밀번호를 입력해주세요.")
+                print("비밀번호를 입력해주세요.")
+                return render_template("user_detail.html")
+            else:
+                if request.form.get("password")!=delete_user_data[1]:
+                    print("비밀번호가 틀립니다.")
+                    flash("비밀번호가 틀립니다.")
+                    return render_template("user_detail.html")
+                else:
+                    session.pop("user_id",None)
+                    session.pop("user_name",None)
+                    session.pop("user_gender",None)
+                    session.pop("user_age",None)
+                    print(session)
+                    db.query(webtoon_db,f"DELETE FROM user WHERE id='{id}'")
+                    webtoon_db.commit()
+                    flash("회원 탈퇴",category="success")
+                    return redirect(url_for("views.index"))
         else:
-            pass
-        return render_template("user_detail.html")
-    
+            flash("로그인 되어 있지 않습니다.")
+            return redirect(url_for("views.index"))

@@ -2,9 +2,12 @@ from matplotlib.pyplot import get
 import numpy as np 
 import pandas as pd
 from sklearn.decomposition import TruncatedSVD
-from website import init
+from website import db,auth
 
+from numpy import dot
+from numpy.linalg import norm
 
+webtoon_db=auth.webtoon_db
 
 def make_list(datas):
     lst = []
@@ -14,29 +17,19 @@ def make_list(datas):
 
 #데이터 호출함수=> 추후 DB 에서 호출하게끔 개선하기 (완료)
 def get_data():
-    db = init.connect_db()
-    cursor = db.cursor()
 
     #webtoon_info to dataframe
-    query ="select column_name from information_schema.columns where table_name='webtoon_info'"
-    cursor.execute(query)
-    datas = cursor.fetchall()
-    column = make_list(datas)
+    datas = db.query(webtoon_db,"select column_name from information_schema.columns where table_name='webtoon_info'")
+    column = ['no', 'title', 'link', 'thumb_link', 'status', 'author', 'fake_intro', 'real_intro','likes', 'episodes', 'first_register_date', 'last_register_date', 'age','rate', 'genre1_pre', 'genre2_pre']
     
-    query = "select * from webtoon_info"
-    cursor.execute(query)
-    datas = cursor.fetchall()
+    datas = db.query(webtoon_db,"select * from webtoon_info")
     webtoon_data = pd.DataFrame(datas,columns=column)
     
     #survey to dataframe 
-    query = "select column_name from information_schema.columns where table_name='survey'"
-    cursor.execute(query)
-    datas = cursor.fetchall()
-    column = make_list(datas)
+    datas = db.query(webtoon_db,"select column_name from information_schema.columns where table_name='survey'")
+    column = ['user', 'webtoon_no', 'score']
 
-    query = "select * from survey"
-    cursor.execute(query)
-    datas = cursor.fetchall()
+    datas = db.query(webtoon_db,"select * from survey")
     rating_data = pd.DataFrame(datas,columns=column)
     
     return rating_data,webtoon_data
@@ -44,19 +37,14 @@ def get_data():
 # -정구리- 협업필터링
 #데이터 전처리
 def preprocessing_data(rating_data,webtoon_data):
-    #webtoon_no -> no (for merge)
-    rating_data = rating_data.rename(columns={'webtoon_no':'no'})
-    
-    #필요없는 데이터들 drop
-    webtoon_data.drop(['likes','fake_intro','real_intro','first_register_date','last_register_date','author','status','episodes','age','rate'],axis=1,inplace=True)
 
     #merge, drop (no 기준으로 merge)
-    usr_webtoon_data = pd.merge(rating_data,webtoon_data,on="no")
-    #drop unnecessary columns
-    usr_webtoon_data = usr_webtoon_data.drop(['no','link','genre1_pre','genre2_pre'],axis=1)
+    dic_corr = dict(enumerate(webtoon_data['title'],start=1))
+    
+    rating_data['title'] = rating_data['webtoon_no'].map(dic_corr)
 
     #make pivot
-    usr_webtoon_pivot = usr_webtoon_data.pivot_table('score',index="user",columns='title')
+    usr_webtoon_pivot = rating_data.pivot_table('score',index="user",columns='title')
 
     #NaN -> 0.0 SVD 동작을 위해선 Nan 형태가 있으면 안된덩 ㅋㅋ
     usr_webtoon_pivot = usr_webtoon_pivot.fillna(0)
@@ -93,14 +81,37 @@ def recommand_webtoon(title):
     for i in dic_corr:
         result.append(webtoon_title[i])
     return result[1:]
-    
 
+#재현이소스
+
+#코사인 유사도
+def cos_sim(A, B):
+    return dot(A, B)/(norm(A)*norm(B))
+
+def dsModel(webtoon_no):
+
+    #이미지 특징 vector select
+    tup = db.query(webtoon_db,"select resnet from thumb")
+
+    vec = []
+    for y in range(len(tup)):
+        vec.append(eval(tup[y][0]))
+
+    #유사도 계산
+    sim = []
+    for x in range(0,2044):
+        sim.append(cos_sim(vec[webtoon_no-1],vec[x]))
+
+    #유사도 상위 10개 웹툰번호 return
+    df = pd.DataFrame(sim, columns=['sim'])
+    return df.sort_values('sim', ascending=False)[:10].index + 1
 
 
 def main():
     result = recommand_webtoon('마루는 강쥐')
+    #print(result)
+    # print(dsModel(1))
+    return result,dsModel(1)
 
-if __name__ =='__main__':
-    main()
-
-
+# if __name__ =='__main__':
+#     main()
